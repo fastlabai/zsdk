@@ -80,6 +80,11 @@ class ZSDK {
   static const String _DISCOVER_BLUETOOTH_PRINTERS =
       'discoverBluetoothPrinters';
 
+  /// Methods - iOS BLE (CoreBluetooth)
+  static const String _SCAN_BLE_DEVICES = 'scanBleDevices';
+  static const String _CONNECT_BLE_DEVICE = 'connectBleDevice';
+  static const String _DISCONNECT_BLE_DEVICE = 'disconnectBleDevice';
+  static const String _PRINT_ZPL_DATA_BLE = 'printZplDataBle';
   /// Properties
   static const String _filePath = 'filePath';
   static const String _data = 'data';
@@ -90,6 +95,9 @@ class ZSDK {
   static const String _cmHeight = 'cmHeight';
   static const String _orientation = 'orientation';
   static const String _dpi = 'dpi';
+  static const String _deviceId = 'deviceId';
+  static const String _serviceUuid = 'serviceUuid';
+  static const String _characteristicUuid = 'characteristicUuid';
 
   late MethodChannel _channel;
 
@@ -122,6 +130,47 @@ class ZSDK {
           Cause.NO_CONNECTION,
         ),
       ).toMap());
+
+  Future<List<Map<String, dynamic>>> scanBleDevices({Duration? timeout}) async {
+    final devices = await _channel
+        .invokeMethod<List<dynamic>>(_SCAN_BLE_DEVICES)
+        .timeout(timeout ?? const Duration(seconds: 10));
+    return devices
+            ?.map((e) => Map<String, dynamic>.from(e as Map))
+            .toList(growable: false) ??
+        <Map<String, dynamic>>[];
+  }
+
+  Future<bool> connectBleDevice({
+    required String deviceId,
+    String? serviceUuid,
+    String? characteristicUuid,
+    Duration? timeout,
+  }) async {
+    final ok = await _channel.invokeMethod<bool>(_CONNECT_BLE_DEVICE, {
+      _deviceId: deviceId,
+      _serviceUuid: serviceUuid,
+      _characteristicUuid: characteristicUuid,
+    }).timeout(timeout ??= const Duration(seconds: DEFAULT_CONNECTION_TIMEOUT),
+        onTimeout: () => _onTimeout(timeout: timeout));
+    return ok ?? false;
+  }
+
+  Future<bool> disconnectBleDevice() async {
+    final ok = await _channel.invokeMethod<bool>(_DISCONNECT_BLE_DEVICE);
+    return ok ?? false;
+  }
+
+  Future<bool> printZplDataBle({
+    required String data,
+    Duration? timeout,
+  }) async {
+    final ok = await _channel.invokeMethod<bool>(_PRINT_ZPL_DATA_BLE, {
+      _data: data,
+    }).timeout(timeout ??= const Duration(seconds: DEFAULT_CONNECTION_TIMEOUT),
+        onTimeout: () => _onTimeout(timeout: timeout));
+    return ok ?? false;
+  }
 
   Future doManualCalibrationOverTCPIP(
           {required String address, int? port, Duration? timeout}) =>

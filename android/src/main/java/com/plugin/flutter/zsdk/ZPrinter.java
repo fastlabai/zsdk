@@ -763,49 +763,82 @@ public class ZPrinter
     }
 
     private void doSimplePrintZplOverBluetooth(final String zplData, final String macAddress) {
-        Connection connection = null;
-        boolean shouldCloseConnection = shouldManageConnection;
-        try {
-            if (activeBluetoothConnection != null && !shouldManageConnection) {
-                try {
-                    if (activeBluetoothConnection.isConnected()) {
-                        connection = activeBluetoothConnection;
-                        shouldCloseConnection = false;
-                    }
-                } catch (Exception ignored) {
-                }
-            }
-
-            if (connection == null) {
-                connection = newBluetoothConnection(macAddress);
-                // connection.open();
-                shouldCloseConnection = true;
-            }
-
+    Connection connection = null;
+    ZebraPrinter printer = null;
+    boolean shouldCloseConnection = shouldManageConnection;
+    try {
+        if (activeBluetoothConnection != null && !shouldManageConnection) {
             try {
-                connection.write(zplData.getBytes(Charset.forName("UTF-8")));
-
-                try {
-                    Thread.sleep(500);
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
+                if (activeBluetoothConnection.isConnected()) {
+                    connection = activeBluetoothConnection;
+                    shouldCloseConnection = false;
                 }
+            } catch (Exception ignored) {}
+        }
 
-                PrinterResponse response = new PrinterResponse(ErrorCode.SUCCESS,
-                        new StatusInfo(Status.READY_TO_PRINT, Cause.UNKNOWN), "Successful print");
-                handler.post(() -> result.success(response.toMap()));
+        if (connection == null) {
+            connection = newBluetoothConnection(macAddress);
+            shouldCloseConnection = true;
+        }
 
-            } finally {
-                if (shouldCloseConnection && connection != null) {
-                    connection.close();
+        try {
+            printer = ZebraPrinterFactory.getInstance(connection);
+
+            if (!isReadyToPrint(printer)) {
+                PrinterResponse response = new PrinterResponse(ErrorCode.PRINTER_ERROR,
+                        getStatusInfo(printer), "Printer is not ready");
+                handler.post(() -> result.error(ErrorCode.PRINTER_ERROR.name(),
+                        response.message, response.toMap()));
+                return;
+            }
+
+            init(connection);
+            changePrinterLanguage(connection, SGDParams.VALUE_ZPL_LANGUAGE);
+
+            // ─── BLE-safe chunked write ───────────────────────────────────────
+            // BLE GATT max payload is 20 bytes per write. The SDK's
+            // sendFileContentsInChunks uses a chunk size tuned for classic BT
+            // and TCP (~4 KB), which overwhelms the ZD421 BLE receive buffer.
+            // We write in 512-byte slices with a 20 ms pause between each so
+            // the printer's firmware can drain the buffer before the next slice
+            // arrives. This matches what Zebra's own iOS SDK does internally.
+            byte[] data = zplData.getBytes(Charset.forName("UTF-8"));
+            int BLE_CHUNK = 128;   // safe for ZD421 BLE buffer
+            int PAUSE_MS  = 50;    // ms between chunks
+
+            int offset = 0;
+            while (offset < data.length) {
+                int end = Math.min(offset + BLE_CHUNK, data.length);
+                connection.write(Arrays.copyOfRange(data, offset, end));
+                offset = end;
+                if (offset < data.length) {
+                    try { Thread.sleep(PAUSE_MS); }
+                    catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
                 }
             }
-        } catch (ConnectionException e) {
-            onConnectionTimeOut(e);
-        } catch (Exception e) {
-            onException(e, null);
+            // ─────────────────────────────────────────────────────────────────
+
+            // Wait for the printer to finish processing the last chunk.
+            // 2000 ms is the safe minimum for a full courier/waybill label.
+            // Increase to 3000 if you have very large labels (>15 KB ZPL).
+            try { Thread.sleep(5000); }
+            catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+
+            PrinterResponse response = new PrinterResponse(ErrorCode.SUCCESS,
+                    getStatusInfo(printer), "Successful print");
+            handler.post(() -> result.success(response.toMap()));
+
+        } finally {
+            if (shouldCloseConnection && connection != null) {
+                connection.close();
+            }
         }
+    } catch (ConnectionException e) {
+        onConnectionTimeOut(e);
+    } catch (Exception e) {
+        onException(e, printer);
     }
+}  
 
     private void doPrintDataStreamOverBluetooth(final InputStream dataStream, final String macAddress, boolean isZPL) {
         Connection connection = null;
