@@ -28,6 +28,7 @@ import java.util.Map;
 
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.Result;
+import java.util.Arrays;
 
 /**
  * Created by luis901101 on 2019-12-18.
