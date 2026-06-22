@@ -347,7 +347,7 @@ public class ZsdkPlugin implements FlutterPlugin, MethodCallHandler {
       try {
         // BluetoothConnection connection = new BluetoothConnection(macAddress);
         // connection.open();
-
+        Connection connection = createBestConnection(macAddress);
         ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
         PrinterLanguage language = printer.getPrinterControlLanguage();
 
