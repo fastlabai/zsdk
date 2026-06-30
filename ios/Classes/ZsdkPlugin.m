@@ -48,8 +48,7 @@ NSString* _DO_MANUAL_CALIBRATION_OVER_BLUETOOTH = @"doManualCalibrationOverBluet
 NSString* _PRINT_CONFIGURATION_LABEL_OVER_BLUETOOTH = @"printConfigurationLabelOverBluetooth";
 NSString* _REBOOT_PRINTER_OVER_BLUETOOTH = @"rebootPrinterOverBluetooth";
 
-/* Methods - Bluetooth Device Discovery */
-NSString* _GET_BONDED_DEVICES = @"getBondedDevices";
+
 
 /* Properties */
 NSString* _filePath = @"filePath";
@@ -192,8 +191,6 @@ NSString* _dpi = @"dpi";
             [printer printZplDataOverTCPIP:arguments[_data] address:arguments[_address] port:arguments[_port]];
         else if ([_REBOOT_PRINTER_OVER_TCP_IP isEqualToString:call.method])
             [printer rebootPrinter:arguments[_address] port:arguments[_port]];
-        else if ([_GET_BONDED_DEVICES isEqualToString:call.method])
-            [self getBondedDevicesWithResult:result];
         else if ([_DO_MANUAL_CALIBRATION_OVER_BLUETOOTH isEqualToString:call.method])
             [printer doManualCalibrationOverBluetooth:arguments[_macAddress]];
         else if ([_PRINT_CONFIGURATION_LABEL_OVER_BLUETOOTH isEqualToString:call.method])
@@ -220,26 +217,5 @@ NSString* _dpi = @"dpi";
     }
 }
 
-- (void)getBondedDevicesWithResult:(FlutterResult)result {
-    @try {
-        NSMutableArray *deviceList = [[NSMutableArray alloc] init];
-
-        EAAccessoryManager *sam = [EAAccessoryManager sharedAccessoryManager];
-        NSArray *connectedAccessories = [sam connectedAccessories];
-
-        for (EAAccessory *accessory in connectedAccessories) {
-            if ([accessory.protocolStrings indexOfObject:@"com.zebra.rawport"] != NSNotFound) {
-                NSMutableDictionary *deviceMap = [[NSMutableDictionary alloc] init];
-                [deviceMap setObject:(accessory.name != nil ? accessory.name : @"Unknown") forKey:@"name"];
-                [deviceMap setObject:accessory.serialNumber forKey:@"address"];
-                [deviceList addObject:deviceMap];
-            }
-        }
-
-        result(deviceList);
-    } @catch (NSException *e) {
-        result([FlutterError errorWithCode:@"BLUETOOTH_ERROR" message:[NSString stringWithFormat:@"Failed to get bonded devices: %@", e.reason] details:nil]);
-    }
-}
 
 @end
