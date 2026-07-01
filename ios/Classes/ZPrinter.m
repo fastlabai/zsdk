@@ -562,7 +562,22 @@ const int TIME_TO_WAIT_FOR_MORE_DATA = 0;
             NSError *error = nil;
             @try {
                 if (![ObjectUtils isNull:data]) {
-                    [connection write:[data dataUsingEncoding:NSUTF8StringEncoding] error:&error];
+                    // Sending a multi-kilobyte ZPL string with a single write: can be
+                    // truncated before the connection is closed, dropping trailing fields
+                    // (missing logo / consignee / truncated text) with no error reported.
+                    // Stage the data and stream it via FileUtil in chunks — the same
+                    // reliable path the file branch below already uses.
+                    NSString *tempFilePath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"zsdk_print.zpl"];
+                    if (![data writeToFile:tempFilePath atomically:YES encoding:NSUTF8StringEncoding error:&error] || ![ObjectUtils isNull:error])
+                        @throw [NSException exceptionWithName:@"Printer error" reason:[NSString stringWithFormat:@"Failed to stage ZPL data. %@", [error description]] userInfo:nil];
+
+                    id<ZebraPrinter,NSObject> printer = [ZebraPrinterFactory getInstance:connection error:&error];
+                    if (![ObjectUtils isNull:error])
+                        @throw [NSException exceptionWithName:@"Printer error" reason:[error description] userInfo:nil];
+
+                    id<FileUtil,NSObject> fileUtil = [printer getFileUtil];
+                    [fileUtil sendFileContents:tempFilePath error:&error];
+                    [[NSFileManager defaultManager] removeItemAtPath:tempFilePath error:nil];
 
                     if (![ObjectUtils isNull:error])
                         @throw [NSException exceptionWithName:@"Printer error" reason:[error description] userInfo:nil];
