@@ -49,6 +49,8 @@ NSString* _DO_MANUAL_CALIBRATION_OVER_BLUETOOTH = @"doManualCalibrationOverBluet
 NSString* _PRINT_CONFIGURATION_LABEL_OVER_BLUETOOTH = @"printConfigurationLabelOverBluetooth";
 NSString* _REBOOT_PRINTER_OVER_BLUETOOTH = @"rebootPrinterOverBluetooth";
 
+
+
 /* Properties */
 NSString* _filePath = @"filePath";
 NSString* _data = @"data";
@@ -274,5 +276,6 @@ NSString* _PRINT_ZPL_DATA_BLE = @"printZplDataBle";
         result([FlutterError errorWithCode:[response getErrorCode] message: response.message details:[response toMap]]);
     }
 }
+
 
 @end
