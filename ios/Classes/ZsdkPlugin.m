@@ -15,6 +15,7 @@
 #import "PrinterConf.h"
 #import "ZPrinter.h"
 #import "SGDParams.h"
+#import "ZebraBLEManager.h"
 
 @implementation ZsdkPlugin
 
@@ -48,8 +49,7 @@ NSString* _DO_MANUAL_CALIBRATION_OVER_BLUETOOTH = @"doManualCalibrationOverBluet
 NSString* _PRINT_CONFIGURATION_LABEL_OVER_BLUETOOTH = @"printConfigurationLabelOverBluetooth";
 NSString* _REBOOT_PRINTER_OVER_BLUETOOTH = @"rebootPrinterOverBluetooth";
 
-/* Methods - Bluetooth Device Discovery */
-NSString* _GET_BONDED_DEVICES = @"getBondedDevices";
+
 
 /* Properties */
 NSString* _filePath = @"filePath";
@@ -61,6 +61,12 @@ NSString* _cmWidth = @"cmWidth";
 NSString* _cmHeight = @"cmHeight";
 NSString* _orientation = @"orientation";
 NSString* _dpi = @"dpi";
+
+/* ble ZebraBLEManager */
+NSString* _SCAN_BLE_DEVICES = @"scanBleDevices";
+NSString* _CONNECT_BLE_DEVICE = @"connectBleDevice";
+NSString* _DISCONNECT_BLE_DEVICE = @"disconnectBleDevice";
+NSString* _PRINT_ZPL_DATA_BLE = @"printZplDataBle";
 
 - (id)init:(id<FlutterPluginRegistrar,NSObject>)registrar {
     self = [self init];
@@ -163,16 +169,69 @@ NSString* _dpi = @"dpi";
 //        NSLog(@"%@", SGDParams.KEY_DARKNESS);
 //        NSLog(@"%f", SGDParams.VALUE_DPI_DEFAULT);
         NSDictionary *arguments = [call arguments];
-         ZPrinter *printer = [[ZPrinter alloc]
-                              initWithMethodChannel:self.channel
-                              result:result
-                              printerConf:[[PrinterConf alloc]
-                                           initWithCmWidth:arguments[_cmWidth]
-                                           cmHeight:arguments[_cmHeight]
-                                           dpi:arguments[_dpi]
-                                           orientation:arguments[_orientation]
-                                           ]
-                              ];
+        if (![arguments isKindOfClass:[NSDictionary class]]) {
+            arguments = @{};
+        }
+
+        if ([_SCAN_BLE_DEVICES isEqualToString:call.method]) {
+            [[ZebraBLEManager shared] startScan:^(NSArray *devices) {
+                result(devices);
+            }];
+            return;
+        }
+        else if ([_CONNECT_BLE_DEVICE isEqualToString:call.method]) {
+            NSString *deviceId = arguments[@"deviceId"];
+            NSString *serviceUuid = arguments[@"serviceUuid"];
+            NSString *characteristicUuid = arguments[@"characteristicUuid"];
+
+            [[ZebraBLEManager shared]
+                connectToDevice:deviceId
+                serviceUuid:serviceUuid
+                characteristicUuid:characteristicUuid
+                completion:^(BOOL success, NSString *message) {
+
+                if (success) {
+                    result(@YES);
+                } else {
+                    result([FlutterError errorWithCode:@"CONNECT_ERROR"
+                                            message:message
+                                            details:nil]);
+                }
+            }];
+            return;
+        }
+        else if ([_DISCONNECT_BLE_DEVICE isEqualToString:call.method]) {
+            [[ZebraBLEManager shared] disconnect];
+            result(@YES);
+            return;
+        }
+        else if ([_PRINT_ZPL_DATA_BLE isEqualToString:call.method]) {
+            NSString *zpl = arguments[@"data"];
+            [[ZebraBLEManager shared]
+                printZpl:zpl
+                completion:^(BOOL success, NSString *message) {
+
+                if (success) {
+                    result(@YES);
+                } else {
+                    result([FlutterError errorWithCode:@"PRINT_ERROR"
+                                            message:message
+                                            details:nil]);
+                }
+            }];
+            return;
+        }
+
+        ZPrinter *printer = [[ZPrinter alloc]
+                             initWithMethodChannel:self.channel
+                             result:result
+                             printerConf:[[PrinterConf alloc]
+                                          initWithCmWidth:arguments[_cmWidth]
+                                          cmHeight:arguments[_cmHeight]
+                                          dpi:arguments[_dpi]
+                                          orientation:arguments[_orientation]
+                                          ]
+                             ];
         
         if ([_DO_MANUAL_CALIBRATION_OVER_TCP_IP isEqualToString:call.method])
             [printer doManualCalibrationOverTCPIP:arguments[_address] port:arguments[_port]];
@@ -192,8 +251,6 @@ NSString* _dpi = @"dpi";
             [printer printZplDataOverTCPIP:arguments[_data] address:arguments[_address] port:arguments[_port]];
         else if ([_REBOOT_PRINTER_OVER_TCP_IP isEqualToString:call.method])
             [printer rebootPrinter:arguments[_address] port:arguments[_port]];
-        else if ([_GET_BONDED_DEVICES isEqualToString:call.method])
-            [self getBondedDevicesWithResult:result];
         else if ([_DO_MANUAL_CALIBRATION_OVER_BLUETOOTH isEqualToString:call.method])
             [printer doManualCalibrationOverBluetooth:arguments[_macAddress]];
         else if ([_PRINT_CONFIGURATION_LABEL_OVER_BLUETOOTH isEqualToString:call.method])
@@ -220,26 +277,5 @@ NSString* _dpi = @"dpi";
     }
 }
 
-- (void)getBondedDevicesWithResult:(FlutterResult)result {
-    @try {
-        NSMutableArray *deviceList = [[NSMutableArray alloc] init];
-
-        EAAccessoryManager *sam = [EAAccessoryManager sharedAccessoryManager];
-        NSArray *connectedAccessories = [sam connectedAccessories];
-
-        for (EAAccessory *accessory in connectedAccessories) {
-            if ([accessory.protocolStrings indexOfObject:@"com.zebra.rawport"] != NSNotFound) {
-                NSMutableDictionary *deviceMap = [[NSMutableDictionary alloc] init];
-                [deviceMap setObject:(accessory.name != nil ? accessory.name : @"Unknown") forKey:@"name"];
-                [deviceMap setObject:accessory.serialNumber forKey:@"address"];
-                [deviceList addObject:deviceMap];
-            }
-        }
-
-        result(deviceList);
-    } @catch (NSException *e) {
-        result([FlutterError errorWithCode:@"BLUETOOTH_ERROR" message:[NSString stringWithFormat:@"Failed to get bonded devices: %@", e.reason] details:nil]);
-    }
-}
 
 @end

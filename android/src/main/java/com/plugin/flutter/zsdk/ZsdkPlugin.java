@@ -345,9 +345,12 @@ public class ZsdkPlugin implements FlutterPlugin, MethodCallHandler {
 
     new Thread(() -> {
       try {
-        // BluetoothConnection connection = new BluetoothConnection(macAddress);
-        // connection.open();
+        // Use the BLE-first / classic-fallback helper so BLE-only Zebra models
+        // (many ZD/ZQ units) connect too. A classic-only RFCOMM open against a
+        // BLE printer fails with "read failed, socket might closed or timeout,
+        // read ret: -1" — exactly what createBestConnection() exists to avoid.
         Connection connection = createBestConnection(macAddress);
+
         ZebraPrinter printer = ZebraPrinterFactory.getInstance(connection);
         PrinterLanguage language = printer.getPrinterControlLanguage();
 

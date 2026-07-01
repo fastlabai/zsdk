@@ -44,15 +44,10 @@ end
 ```
 
 #### Bluetooth Support (iOS)
-If you want to use Bluetooth connectivity on iOS, you need to configure your app for MFi (Made for iPhone) accessories and configure the required permissions:
+On iOS this plugin connects to Zebra printers over CoreBluetooth (BLE), so no MFi External Accessory protocol (`com.zebra.rawport`) is required. You only need to declare the Bluetooth usage permissions:
 
 1. Add the following keys to your `Info.plist`:
 ```xml
-<key>UISupportedExternalAccessoryProtocols</key>
-<array>
-    <string>com.zebra.rawport</string>
-</array>
-
 <!-- Required for Bluetooth permission requests on iOS 13+ -->
 <key>NSBluetoothAlwaysUsageDescription</key>
 <string>This app uses Bluetooth to connect to Zebra printers</string>
@@ -69,7 +64,7 @@ If you want to use Bluetooth connectivity on iOS, you need to configure your app
     'PERMISSION_BLUETOOTH=1',
 ```
 
-3. Add the `ExternalAccessory` framework to your Xcode project (usually automatic via CocoaPods).
+3. Add the `CoreBluetooth` framework to your Xcode project (usually automatic via CocoaPods).
 
 4. Request Bluetooth permissions at runtime before using any Bluetooth features:
 ```dart
