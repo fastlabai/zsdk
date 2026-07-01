@@ -24,4 +24,3 @@ Zebra Link OS SDK Flutter Pod
   s.pod_target_xcconfig = { 'DEFINES_MODULE' => 'YES', 'ENABLE_BITCODE' => 'NO' }
   s.frameworks = 'CoreBluetooth', 'ExternalAccessory'
 end
-

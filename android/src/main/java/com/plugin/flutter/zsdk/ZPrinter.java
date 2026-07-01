@@ -763,7 +763,60 @@ public class ZPrinter
         new Thread(() -> doSimplePrintZplOverBluetooth(data, macAddress)).start();
     }
 
-    private void doSimplePrintZplOverBluetooth(final String zplData, final String macAddress) {
+    // private void doSimplePrintZplOverBluetooth(final String zplData, final String macAddress) {
+    //     Connection connection = null;
+    //     boolean shouldCloseConnection = shouldManageConnection;
+    //     try {
+    //         if (activeBluetoothConnection != null && !shouldManageConnection) {
+    //             try {
+    //                 if (activeBluetoothConnection.isConnected()) {
+    //                     connection = activeBluetoothConnection;
+    //                     shouldCloseConnection = false;
+    //                 }
+    //             } catch (Exception ignored) {
+    //             }
+    //         }
+
+    //         if (connection == null) {
+    //             connection = newBluetoothConnection(macAddress);
+    //             // connection.open();
+    //             shouldCloseConnection = true;
+    //         }
+
+    //         try {
+    //             // A full label is a multi-kilobyte ZPL string. Sending it with a single
+    //             // raw connection.write() is unreliable over Bluetooth — especially BLE,
+    //             // where the data is split into many small GATT writes and the printer's
+    //             // receive buffer silently drops chunks once it fills. The result is the
+    //             // intermittent "missing logo / signature / consignee / truncated text"
+    //             // with no error reported. Streaming in chunks lets the SDK pace the writes
+    //             // and wait for the link, exactly like every other path in this file does
+    //             // (see doPrintDataStreamOverBluetooth and the warning at line ~399).
+    //             FileUtilities.sendFileContentsInChunks(connection,
+    //                     new ByteArrayInputStream(zplData.getBytes(Charset.forName("UTF-8"))));
+
+    //             try {
+    //                 Thread.sleep(500);
+    //             } catch (InterruptedException e) {
+    //                 Thread.currentThread().interrupt();
+    //             }
+
+    //             PrinterResponse response = new PrinterResponse(ErrorCode.SUCCESS,
+    //                     new StatusInfo(Status.READY_TO_PRINT, Cause.UNKNOWN), "Successful print");
+    //             handler.post(() -> result.success(response.toMap()));
+
+    //         } finally {
+    //             if (shouldCloseConnection && connection != null) {
+    //                 connection.close();
+    //             }
+    //         }
+    //     } catch (ConnectionException e) {
+    //         onConnectionTimeOut(e);
+    //     } catch (Exception e) {
+    //         onException(e, null);
+    //     }
+    // }
+   private void doSimplePrintZplOverBluetooth(final String zplData, final String macAddress) {
     Connection connection = null;
     ZebraPrinter printer = null;
     boolean shouldCloseConnection = shouldManageConnection;

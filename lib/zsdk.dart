@@ -30,7 +30,7 @@ class ZSDK {
   static const int DEFAULT_ZPL_TCP_PORT = 9100;
 
   ///In seconds
-  static const int DEFAULT_CONNECTION_TIMEOUT = 10;
+  static const int DEFAULT_CONNECTION_TIMEOUT = 60;
 
   /// Channel
   static const String _METHOD_CHANNEL = 'zsdk';
@@ -85,6 +85,7 @@ class ZSDK {
   static const String _CONNECT_BLE_DEVICE = 'connectBleDevice';
   static const String _DISCONNECT_BLE_DEVICE = 'disconnectBleDevice';
   static const String _PRINT_ZPL_DATA_BLE = 'printZplDataBle';
+
   /// Properties
   static const String _filePath = 'filePath';
   static const String _data = 'data';
